@@ -1,6 +1,7 @@
 from constants import (
+    SYMBOLS,
     DISPLAY_DIGITS,
-    SYMBOLS
+    REFRESH_DELAY
 )
 import micropython
 from hardware import (
@@ -74,6 +75,13 @@ def display_cycle(e, b, n, r, d):
 
         time.sleep_us(e)
 
+    h.off()
+    for _ in r:
+        c.off()
+        t.on()
+        c.on()
+    h.on()
+
 
 @lights_off
 def display(
@@ -105,7 +113,7 @@ def display(
     r = reversed_indexes
     m = millis
     d = dark
-    e = config['refresh_delay']
+    e = REFRESH_DELAY
 
     if millis < 1000 or (not mid_flash and not initial_flash):
         s = time.ticks_ms()
