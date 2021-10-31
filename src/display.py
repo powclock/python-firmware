@@ -1,6 +1,13 @@
-from constants import DISPLAY_DIGITS, SYMBOLS
+from constants import (
+    DISPLAY_DIGITS,
+    SYMBOLS
+)
 import micropython
-from hardware import data, clock, latch
+from hardware import (
+    data as t,
+    clock as c,
+    latch as h
+)
 from array import array
 import time
 from config import config
@@ -14,12 +21,12 @@ STATE = {
 
 @micropython.native
 def turn_lights_off():
-    latch.off()
+    h.off()
     for _ in range(16):
-        clock.off()
-        data.on()
-        clock.on()
-    latch.on()
+        c.off()
+        t.on()
+        c.on()
+    h.on()
 
 
 def lights_off(method):
@@ -32,41 +39,40 @@ def lights_off(method):
 
 
 @micropython.native
-def _display_cycle(bit_lines, line, reversed_indexes, dark):
-    refresh_delay = config['refresh_delay']
-    for i, bit_line in enumerate(bit_lines):
-        line_copy = line[:]
-        latch.off()
+def display_cycle(e, b, n, r, d):
+    for i in range(len(b)):
+        p = n[:]
+        h.off()
 
-        for j in reversed_indexes:
+        for j in r:
             if j < 8 and j != i:
-                line_copy[j] = 1
-                clock.off()
-                data.value(line_copy[j] ^ 1)
-                clock.on()
+                p[j] = 1
+                c.off()
+                t.value(p[j] ^ 1)
+                c.on()
                 continue
 
-            if j > 7 and bit_line[j - 8]:
-                clock.off()
-                data.value(line_copy[j])
-                clock.on()
+            if j > 7 and b[i][j - 8]:
+                c.off()
+                t.value(p[j])
+                c.on()
                 continue
 
-            clock.off()
-            data.value(line_copy[j] ^ 1)
-            clock.on()
+            c.off()
+            t.value(p[j] ^ 1)
+            c.on()
 
-        latch.on()
+        h.on()
 
-        if dark:
-            latch.off()
-            for _ in reversed_indexes:
-                clock.off()
-                data.on()
-                clock.on()
-            latch.on()
+        if d:
+            h.off()
+            for _ in r:
+                c.off()
+                t.on()
+                c.on()
+            h.on()
 
-        time.sleep_us(refresh_delay)
+        time.sleep_us(e)
 
 
 @lights_off
@@ -93,37 +99,34 @@ def display(
     if dark is None:
         dark = STATE['dark_mode']
 
+    b = bit_lines
+    n = line
+    y = display_cycle
+    r = reversed_indexes
+    m = millis
+    d = dark
+    e = config['refresh_delay']
+
     if millis < 1000 or (not mid_flash and not initial_flash):
-        start_millis = time.ticks_ms()
-        while (time.ticks_ms() - start_millis < millis):
-            _display_cycle(bit_lines,
-                           line,
-                           reversed_indexes,
-                           dark)
+        s = time.ticks_ms()
+        while (time.ticks_ms() - s < m):
+            y(e, b, n, r, d)
     else:
         flash_millis = 200
+        f = flash_millis
         if initial_flash:
-            start_millis = time.ticks_ms()
-            while (time.ticks_ms() - start_millis < flash_millis):
-                _display_cycle(bit_lines,
-                               line,
-                               reversed_indexes,
-                               dark=True)
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < f):
+                y(e, b, n, r, True)
 
-            phase_start_millis = time.ticks_ms()
-            while (time.ticks_ms() - phase_start_millis < flash_millis):
-                _display_cycle(bit_lines,
-                               line,
-                               reversed_indexes,
-                               dark=False)
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < f):
+                y(e, b, n, r, False)
 
-            start_millis = time.ticks_ms()
-            remaining_millis = millis - 2 * flash_millis
-            while (time.ticks_ms() - start_millis < remaining_millis):
-                _display_cycle(bit_lines,
-                               line,
-                               reversed_indexes,
-                               dark=True)
+            s = time.ticks_ms()
+            g = m - 2 * f
+            while (time.ticks_ms() - s < g):
+                y(e, b, n, r, True)
 
 
 @lights_off
