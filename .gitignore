@@ -1,6 +1,7 @@
 # Custom
 config.json
 .DS_Store
+.micropythonrc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
