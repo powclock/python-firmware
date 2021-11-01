@@ -13,6 +13,9 @@ from array import array
 import time
 from config import config
 import network
+from machine import freq
+
+freq(int(16e7))  # 160 MHz
 
 
 STATE = {
@@ -108,14 +111,31 @@ def display(
     d = dark
     e = REFRESH_DELAY
 
-    if millis < 1000 or (not mid_flash and not initial_flash):
-        if dark:
+    if millis > 1000 and (mid_flash or initial_flash):
+        flash_millis = 200
+        f = flash_millis
+        if initial_flash:
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < f):
+                y(e, b, n, r, True)
+
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < f):
+                y(e, b, n, r, False)
+
+            s = time.ticks_ms()
+            g = m - 2 * f
+            while (time.ticks_ms() - s < g):
+                y(e, b, n, r, True)
+    else:
+        if dark or m % 1000 != 0:
             s = time.ticks_ms()
             while (time.ticks_ms() - s < m):
                 y(e, b, n, r, d)
         else:
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < m):
+            m = int(m / 1000)
+            s = time.time()
+            while (time.time() - s < m):
                 for i in range(len(b)):
                     p = n[:]
                     h.off()
@@ -136,23 +156,6 @@ def display(
                         c.on()
                     h.on()
                     time.sleep_us(e)
-
-    else:
-        flash_millis = 200
-        f = flash_millis
-        if initial_flash:
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < f):
-                y(e, b, n, r, True)
-
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < f):
-                y(e, b, n, r, False)
-
-            s = time.ticks_ms()
-            g = m - 2 * f
-            while (time.ticks_ms() - s < g):
-                y(e, b, n, r, True)
 
 
 @lights_off
