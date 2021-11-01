@@ -1,21 +1,21 @@
 from constants import (
-    SYMBOLS,
     DISPLAY_DIGITS,
-    REFRESH_DELAY
+    REFRESH_DELAY,
+    DARK_REFRESH_DELAY,
+    NUMBERS_SYMBOLS,
+    LETTERS_SYMBOLS,
+    ANIMATION_SYMBOLS
 )
 import micropython
 from hardware import (
-    data as t,
     clock as c,
-    latch as h
+    data as d,
+    latch as t
 )
 from array import array
 import time
 from config import config
 import network
-from machine import freq
-
-freq(int(16e7))  # 160 MHz
 
 
 STATE = {
@@ -25,12 +25,12 @@ STATE = {
 
 @micropython.native
 def turn_lights_off():
-    h.off()
+    t.off()
     for _ in range(16):
         c.off()
-        t.on()
+        d.on()
         c.on()
-    h.on()
+    t.on()
 
 
 def lights_off(method):
@@ -43,119 +43,83 @@ def lights_off(method):
 
 
 @micropython.native
-def display_cycle(e, b, n, r, d):
-    for i in range(len(b)):
-        p = n[:]
-        h.off()
+def _display(
+    bit_lines,
+    millis,
+    dark_mode
+):
+    line = array('b', 16 * [0])
+    reversed_indexes = array('b', reversed(range(16)))
 
-        for j in r:
-            if j < 8 and j != i:
-                p[j] = 1
+    k = dark_mode
+    p = bit_lines
+    n = line
+    r = reversed_indexes
+    m = millis
+    u = REFRESH_DELAY
+    z = DARK_REFRESH_DELAY
+
+    x = time.ticks_ms
+    w = x()
+    while (x() - w < m):
+        for i, s in enumerate(p):
+            b = n[:]
+            t.off()
+            for j in r:
+                if j < 8 and j != i:
+                    b[j] = 1
+                    c.off()
+                    d.value(b[j] ^ 1)
+                    c.on()
+                    continue
+                if j > 7 and s[j - 8]:
+                    c.off()
+                    d.value(b[j])
+                    c.on()
+                    continue
                 c.off()
-                t.value(p[j] ^ 1)
+                d.value(b[j] ^ 1)
                 c.on()
-                continue
-
-            if j > 7 and b[i][j - 8]:
-                c.off()
-                t.value(p[j])
-                c.on()
-                continue
-
-            c.off()
-            t.value(p[j] ^ 1)
-            c.on()
-
-        h.on()
-
-        if d:
-            h.off()
-            for _ in r:
-                c.off()
+            t.on()
+            if not k:
+                time.sleep_us(u)
+            else:
+                t.off()
+                for _ in range(16):
+                    c.off()
+                    d.on()
+                    c.on()
                 t.on()
-                c.on()
-            h.on()
-
-        time.sleep_us(e)
+                time.sleep_us(z)
 
 
 @lights_off
 def display(
     message,
     millis=1000,
-    dark=None,
-    mid_flash=False,
-    initial_flash=False
+    symbols=None,
+    dark_mode=None
 ):
+    if dark_mode is None:
+        dark_mode = STATE['dark_mode']
+
     if isinstance(message, list):
         bit_lines = message
     else:
-        message = str(message)[:DISPLAY_DIGITS]
+        if symbols is None:
+            try:
+                int(message)
+                symbols = NUMBERS_SYMBOLS
+            except Exception:
+                symbols = LETTERS_SYMBOLS
+
+        message = str(message)
         left_zeros = DISPLAY_DIGITS - len(message)
         padded_message = left_zeros * [' '] + [symbol for symbol in message]
-        bit_lines = [SYMBOLS[item] for item in padded_message]
+        bit_lines = [symbols[item] for item in padded_message]
 
-    half_digits = int(DISPLAY_DIGITS / 2)
-    bit_lines = bit_lines[half_digits:] + bit_lines[:half_digits]
-    line = array('b', 16 * [0])
-    reversed_indexes = array('b', reversed(range(16)))
-
-    if dark is None:
-        dark = STATE['dark_mode']
-
-    b = bit_lines
-    n = line
-    y = display_cycle
-    r = reversed_indexes
-    m = millis
-    d = dark
-    e = REFRESH_DELAY
-
-    if millis > 1000 and (mid_flash or initial_flash):
-        flash_millis = 200
-        f = flash_millis
-        if initial_flash:
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < f):
-                y(e, b, n, r, True)
-
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < f):
-                y(e, b, n, r, False)
-
-            s = time.ticks_ms()
-            g = m - 2 * f
-            while (time.ticks_ms() - s < g):
-                y(e, b, n, r, True)
-    else:
-        if dark or m % 1000 != 0:
-            s = time.ticks_ms()
-            while (time.ticks_ms() - s < m):
-                y(e, b, n, r, d)
-        else:
-            m = int(m / 1000)
-            s = time.time()
-            while (time.time() - s < m):
-                for i in range(len(b)):
-                    p = n[:]
-                    h.off()
-                    for j in r:
-                        if j < 8 and j != i:
-                            p[j] = 1
-                            c.off()
-                            t.value(p[j] ^ 1)
-                            c.on()
-                            continue
-                        if j > 7 and b[i][j - 8]:
-                            c.off()
-                            t.value(p[j])
-                            c.on()
-                            continue
-                        c.off()
-                        t.value(p[j] ^ 1)
-                        c.on()
-                    h.on()
-                    time.sleep_us(e)
+    bit_lines = bit_lines[4:] + bit_lines[:4]
+    _display(bit_lines, millis, dark_mode)
 
 
 @lights_off
@@ -163,9 +127,9 @@ def display_ip(dark=None):
     routercon = network.WLAN(network.STA_IF)
     ip_address = routercon.ifconfig()[0]
     splits = ip_address.split('.')
-    display('addr', 2000, dark=dark)
-    display(' '.join(splits[:2]), 2000, dark=dark)
-    display(' '.join(splits[2:]), 2000, dark=dark)
+    display('addr', 2000, LETTERS_SYMBOLS)
+    display(' '.join(splits[:2]), 2000, NUMBERS_SYMBOLS)
+    display(' '.join(splits[2:]), 2000, NUMBERS_SYMBOLS)
 
 
 @lights_off
@@ -195,4 +159,14 @@ def display_time(millis, dark=None):
             else:
                 STATE['dark_mode'] = False
 
-    display(hour + '_' + minutes, millis)
+    display(hour + '_' + minutes, millis, NUMBERS_SYMBOLS)
+
+
+def display_animation(animation, cycles=1):
+    for _ in range(cycles):
+        for i, message in enumerate(animation['messages']):
+            if isinstance(animation['millis'], list):
+                millis = animation['millis'][i]
+            else:
+                millis = animation['millis']
+            display(message, millis, ANIMATION_SYMBOLS)

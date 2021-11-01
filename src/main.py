@@ -3,7 +3,8 @@ from display import (
     turn_lights_off,
     display,
     display_time,
-    display_ip
+    display_ip,
+    display_animation
 )
 from utils import print_trace
 from config import config
@@ -13,7 +14,6 @@ import time
 import urequests as requests
 import ntptime
 import ujson as json
-import gc
 
 
 def connect_wifi():
@@ -43,26 +43,6 @@ def set_time():
             done = True
         except Exception:
             time.sleep_ms(500)
-
-
-def display_animation(animation, cycles=1, message_mask=None, dark=None):
-    for _ in range(cycles):
-        for i, message in enumerate(animation['messages']):
-            if message_mask:
-                new_message = ''
-                for j, symbol in enumerate(message_mask):
-                    if symbol != ' ':
-                        new_message += symbol
-                    else:
-                        new_message += message[j]
-                message = new_message
-
-            if isinstance(animation['millis'], list):
-                millis = animation['millis'][i]
-            else:
-                millis = animation['millis']
-
-            display(message, millis, dark=dark)
 
 
 def load_sources():
@@ -123,13 +103,9 @@ def main(first_call=True):
     turn_lights_off()
     Led.off()
 
-    gc.collect()
-
     if first_call:
         display_animation(config['animations']['loading_1'])
-        display(LOGO, 500, dark=True)
-        display(LOGO, 150)
-        display(LOGO, 500, dark=True)
+        display(LOGO, 2000)
 
     connect_wifi()
     if first_call:
