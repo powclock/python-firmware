@@ -110,7 +110,9 @@ def display(
 
     if millis < 1000 or (not mid_flash and not initial_flash):
         if dark:
-            y(e, b, n, r, d)
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < m):
+                y(e, b, n, r, d)
         else:
             s = time.ticks_ms()
             while (time.ticks_ms() - s < m):
