@@ -75,13 +75,6 @@ def display_cycle(e, b, n, r, d):
 
         time.sleep_us(e)
 
-    h.off()
-    for _ in r:
-        c.off()
-        t.on()
-        c.on()
-    h.on()
-
 
 @lights_off
 def display(
@@ -116,9 +109,32 @@ def display(
     e = REFRESH_DELAY
 
     if millis < 1000 or (not mid_flash and not initial_flash):
-        s = time.ticks_ms()
-        while (time.ticks_ms() - s < m):
+        if dark:
             y(e, b, n, r, d)
+        else:
+            s = time.ticks_ms()
+            while (time.ticks_ms() - s < m):
+                for i in range(len(b)):
+                    p = n[:]
+                    h.off()
+                    for j in r:
+                        if j < 8 and j != i:
+                            p[j] = 1
+                            c.off()
+                            t.value(p[j] ^ 1)
+                            c.on()
+                            continue
+                        if j > 7 and b[i][j - 8]:
+                            c.off()
+                            t.value(p[j])
+                            c.on()
+                            continue
+                        c.off()
+                        t.value(p[j] ^ 1)
+                        c.on()
+                    h.on()
+                    time.sleep_us(e)
+
     else:
         flash_millis = 200
         f = flash_millis

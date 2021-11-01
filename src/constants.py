@@ -26,7 +26,7 @@ LOGO = [
 
 
 DISPLAY_DIGITS = 8
-REFRESH_DELAY = 1500
+REFRESH_DELAY = 650
 
 with open('symbols.json', 'r') as config_file:
     SYMBOLS = json.load(config_file)
