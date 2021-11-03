@@ -14,6 +14,7 @@ import ntptime
 import urequests as requests
 import time
 import network
+import gc
 
 
 def connect_wifi():
@@ -100,6 +101,7 @@ def loop():
 
 
 def main(first_call=True):
+    gc.collect()
     turn_lights_off()
     Led.off()
 
