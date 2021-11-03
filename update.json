@@ -4,11 +4,11 @@
         "config.json"
     ],
     "replace":[
-        "/src/config.py",
-        "/src/constants.py",
-        "/src/display.py",
-        "/src/hardware.py",
-        "/src/main.py",
-        "/src/utils.py"
+        "src/config.py",
+        "src/constants.py",
+        "src/display.py",
+        "src/hardware.py",
+        "src/main.py",
+        "src/utils.py"
     ]
 }
