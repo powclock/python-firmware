@@ -107,7 +107,7 @@ def main(first_call=True):
 
     if first_call:
         display(LOGO, 2000)
-        display_animation(config['animations']['loading_1'], 2)
+        display_animation(config['animations']['loading_1'], 3)
 
     connect_wifi()
     if first_call:

@@ -6,11 +6,6 @@ import gc
 
 
 def update_firmware():
-    # Try to restore a bad update
-    for file_name in listdir():
-        if file_name[0] == ('_'):
-            rename(file_name, file_name[1:])
-
     url = config['update']['url']
     repo = config['update']['repo']
     branch = config['update']['branch']
@@ -37,8 +32,11 @@ def update_firmware():
 
     # Update files
     for file_name in listdir():
-        if file_name not in files_to_persist and file_name[0] != ('_'):
+        if file_name != 'update.py' \
+                and file_name not in files_to_persist \
+                and file_name[0] != ('_'):
             remove(file_name)
     for file_name in listdir():
-        if file_name[0] == ('_'):
+        if file_name != 'update.py' \
+                and file_name[0] == ('_'):
             rename(file_name, file_name[1:])
