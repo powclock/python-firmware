@@ -105,7 +105,7 @@ def main(first_call=True):
 
     if first_call:
         display_animation(config['animations']['loading_1'])
-        display(LOGO, 2000)
+        display("bitcoin", 2000)
 
     connect_wifi()
     if first_call:
