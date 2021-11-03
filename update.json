@@ -9,6 +9,7 @@
         "src/display.py",
         "src/hardware.py",
         "src/main.py",
+        "src/update.py",
         "src/utils.py"
     ]
 }
