@@ -14,7 +14,6 @@ import ntptime
 import urequests as requests
 import time
 import network
-import gc
 
 
 def connect_wifi():
@@ -105,7 +104,6 @@ def main(first_call=True):
     Led.off()
 
     if first_call:
-        gc.collect()
         display(LOGO, 2000)
         display_animation(config['animations']['loading_1'], 2)
 
