@@ -1,4 +1,6 @@
-from constants import LOGO
+from hardware import Led
+from config import config
+from utils import print_traceback
 from display import (
     turn_lights_off,
     display,
@@ -6,14 +8,13 @@ from display import (
     display_ip,
     display_animation
 )
-from utils import print_trace
-from config import config
-from hardware import Led
-import network
-import time
-import urequests as requests
-import ntptime
+from constants import LOGO
 import ujson as json
+import ntptime
+import urequests as requests
+import time
+import network
+import gc
 
 
 def connect_wifi():
@@ -104,8 +105,9 @@ def main(first_call=True):
     Led.off()
 
     if first_call:
-        display_animation(config['animations']['loading_1'])
+        gc.collect()
         display(LOGO, 2000)
+        display_animation(config['animations']['loading_1'], 2)
 
     connect_wifi()
     if first_call:
@@ -116,7 +118,7 @@ def main(first_call=True):
     try:
         loop()
     except Exception as error:
-        print_trace(error)
+        print_traceback(error)
         main(first_call=False)
 
 
