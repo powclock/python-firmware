@@ -137,6 +137,7 @@ def start():
 
         # connect_wifi()
         if first_call:
+            display(88888888, 500)
             display(LOGO, 2000)
             display_animation(config['animations']['loading_1'], 3)
             if config['display_ip']:
