@@ -27,8 +27,7 @@ def update_firmware():
         del content
         gc.collect()
 
-    files_to_persist = set(
-        [file_name for file_name in update_info['persist']])
+    files_to_persist = set([file_name for file_name in update_info['persist']])
 
     # Update files
     for file_name in listdir():

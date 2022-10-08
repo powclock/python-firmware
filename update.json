@@ -1,15 +1,18 @@
 {
     "persist": [
         "boot.py",
+        "update.py",
         "config.json"
     ],
-    "replace":[
+    "replace": [
+        "src/clock.py",
         "src/config.py",
         "src/constants.py",
         "src/display.py",
+        "src/env.py",
         "src/hardware.py",
         "src/main.py",
-        "src/update.py",
-        "src/utils.py"
+        "src/utils.py",
+        "src/wifi_manager.py"
     ]
 }
