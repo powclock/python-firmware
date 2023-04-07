@@ -1,4 +1,4 @@
-#!/bin/bash
-source env.sh
+#!/bin/bash -e
+source ./env.sh
 screen $TTY 115200
 

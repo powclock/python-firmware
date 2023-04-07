@@ -1,1 +1,0 @@
-SSID = 'POW CLOCK'

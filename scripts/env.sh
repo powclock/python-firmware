@@ -1,3 +1,3 @@
 #!/bin/bash
-export TTY=/dev/tty.usbserial-210
+export TTY=/dev/ttyUSB0
 

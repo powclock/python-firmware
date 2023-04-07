@@ -1,0 +1,31 @@
+<html>
+    <head>
+        <title>PowClock set up</title>
+        <script>
+            function postData() {
+                fetch('http://192.168.4.1/'+document.getElementById('file').value, {
+                    method: 'POST',
+                    body: document.getElementById('webinput').value
+                });
+                alert("Config sent. PowClock should reboot if the change was successful.")
+            }
+        </script>
+        <style>
+            #id, #webinput, button {
+                display: block;
+                margin-top: 10px;
+            }
+            #webinput {
+                width: 100%;
+                height: 200px;
+            }
+        </style>
+    </head>
+    <body>
+        <p>This is the PowClock set up page. Refer to https://github.com/powclock/python-firmware for more information.</p>
+        <p>You can use this textarea to submit your configuration:</p>
+        <input id="file" type="text" value="config.json" />
+        <textarea id="webinput">{{ INPUT }}</textarea>
+        <button onclick="postData()">Submit</button>
+    </body>
+</html>

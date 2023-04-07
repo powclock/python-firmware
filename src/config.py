@@ -1,6 +1,3 @@
-import ujson as json
-from utils import print_traceback
-
 config = {
     "update": {
         "enabled": True,
@@ -9,17 +6,26 @@ config = {
         "branch": "master",
         "descriptor": "update.json",
     },
-    # "night_mode": ['23:00', '7:00'],
-    "night_mode": False,
-    "utc_offset": 2,
-    "display_ip": True,
+    "wificlient": {
+        "ssid": "",
+        "password": ""
+    },
+    "setup": {
+        "ssid": "Powclock",
+        "password": "asdfasdf"
+    },
+    "night_mode": ['20:00', '8:00'],
+    "utc_offset": 3600, #specified in seconds
+    "utc_offset_update": True,
+    "timezone": "",
     "cycles_to_update": 3,
+    "cycles_to_reboot": 0,
     "sources": {
         "powclock_api": {
             "url": "https://api.powclock.com/v1",
             "method": "get",
             "attributes": {
-                "price": ["price", "usd"],
+                "price": ["price","usd"], #This will get data like .price.usd
                 "height": ["height"]
             }
         }
@@ -34,7 +40,12 @@ config = {
                     "cycles": 1
                 }
             },
-        }, {
+        },
+        {
+            "message": "{date}",
+            "millis": 3000,
+        },
+        {
             "message": "usd",
             "millis": 2000,
             "transitions": {
@@ -43,11 +54,13 @@ config = {
                     "cycles": 1
                 }
             }
-        }, {
+        },
+        {
             "source": "powclock_api",
             "message": "{price}",
             "millis": 6000
-        }, {
+        },
+        {
             "message": "sats",
             "millis": 2000,
             "transitions": {
@@ -56,7 +69,8 @@ config = {
                     "cycles": 1
                 }
             }
-        }, {
+        },
+        {
             "source": "powclock_api",
             "message": "int(1e8/{price})",
             "animations": {
@@ -64,7 +78,8 @@ config = {
                 "down": "trending_down_1"
             },
             "millis": 6000
-        }, {
+        },
+        {
             "message": "height",
             "millis": 2000,
             "transitions": {
@@ -73,7 +88,8 @@ config = {
                     "cycles": 1
                 }
             }
-        }, {
+        },
+        {
             "source": "powclock_api",
             "message": "{height}",
             "millis": 6000
@@ -114,8 +130,11 @@ config = {
     }
 }
 
-try:
-    with open('./config.json', 'r') as input_file:
-        config.update(json.load(input_file))
-except Exception as error:
-    print_traceback(error)
+def loadConfig():
+    import ujson
+    try:
+        with open('./config.json', 'r') as input_file:
+            config.update(ujson.load(input_file))
+    except Exception as error:
+        print('Error loading JSON from ./config.json')
+

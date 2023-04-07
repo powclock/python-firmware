@@ -1,154 +1,271 @@
 import gc
-from hardware import Led
-from config import config
-from utils import print_traceback
-from display import (
-    turn_lights_off,
-    display,
-    display_ip,
-    display_animation,
-)
-from constants import LOGO
-import ujson as json
-import ntptime
-import urequests as requests
-import time
-from clock import get_time_text
+from config import loadConfig, config
+from display import PowDisplay
+import powRequests
+import json
 import network
+import time
+import ntptime
+import machine
 
-
-def connect_wifi():
+# Creates a file to prepare a silent reboot (less verbose at start time)
+def silentReboot():
+    print("Silent reboot")
     try:
-        with open('wifi.dat') as myfile:
-            lines = myfile.readlines()
-    except OSError:
-        lines = []
+        open("silentReboot","x").close()
+    except:
+        pass
+    machine.reset()
 
-    profiles = {}
-    for line in lines:
-        ssid, password = line.strip().split(';')
-        profiles[ssid] = password
+# Creates a file to register a succesful boot
+def registerSuccessfulInitialization():
+    try:
+        open("successfulBoot","x").close()
+    except:
+        print("Couldn't register successful boot")
 
-    for ssid, password in profiles.items():
-        print(f'Connecting to {ssid}...')
-        for _ in range(100):
-            try:
-                Led.on()
-                routercon = network.WLAN(network.STA_IF)
-                routercon.active(True)
-                routercon.connect(ssid, password)
-                ip_address = routercon.ifconfig()[0]
-                if ip_address != '0.0.0.0':
-                    Led.off()
-            except Exception:
-                time.sleep_ms(100)
+# Returns true if file exists at the removal time
+def checkAndRemoveFile(filename):
+    import os
+    try:
+        os.remove(filename)
+        return True
+    except:
+        return False
 
+# Use worldtimeapi.org to adjust time
+def updateTimezoneOffset():
+    if not config['utc_offset_update']:
+        return
+    url = "http://worldtimeapi.org/api/ip"
+    update_reason = "ip"
+    if config['timezone'] != "":
+        url = "http://worldtimeapi.org/api/timezone/"+config['timezone']
+        update_reason = config['timezone']
+    try:
+        response = powRequests.request('GET', url)
+        parsed_response = response.json()
+        response.close()
+        new_offsets = parsed_response['utc_offset'].split(':')
+        config['utc_offset'] = int(new_offsets[0])*3600 + int(new_offsets[1])*60
+        print('New timezone offset for', update_reason, 'is', config['utc_offset'])
+    except:
+        print("Couldn't update timezone offset")
 
-def set_time():
-    done = False
-    while not done:
-        try:
-            ntptime.settime()
-            done = True
-        except Exception as error:
-            print(error)
-            time.sleep_ms(500)
+# Download information from webservers in JSON format
+def load_sources(oldSources=None):
+    print('Loading sources')
+    PowDisplay.displayAnimation(config['animations']['loading_2'], 2)
 
+    if not network.WLAN(network.STA_IF).isconnected():
+        sources = {}
+        print('WiFi not connected. Showing errors.')
+        for source, source_config in config['sources'].items():
+            sources[source] = {}
+            for attribute, fields in config['sources'][source]['attributes'].items():
+                sources[source][attribute] = "conn err"
+        if oldSources != None:
+            return oldSources
+        return sources
 
-def load_sources():
-    display_animation(config['animations']['loading_2'], 2)
+    # Sync time
+    try:
+        ntptime.settime()
+    except Exception as error:
+        print("Couldn't sync time")
+        print(error)
 
     sources = {}
     for source, source_config in config['sources'].items():
-        url = source_config['url']
-        method = source_config['method'].lower()
+        sources[source] = {}
 
+        # Prepare request
         data = None
         if 'data' in source_config:
             data = json.dumps(source_config['data'])
-
         headers = {}
         if 'headers' in source_config:
             headers = source_config['headers']
+        
+        # Download source
+        try:
+            print('Requesting', source_config['url'])
+            response = powRequests.request(source_config['method'].upper(),
+                            source_config['url'], data=data, headers=headers)
+            parsed_response = response.json()
+            response.close()
+            print('Request complete')
+        except Exception as error:
+            print("Error requesting " + source_config['url'], error)
+            if oldSources != None:
+                sources[source] = oldSources[source]
+            else:
+                for attribute, fields in config['sources'][source]['attributes'].items():
+                    sources[source][attribute] = "http err"
+            continue
 
-        response = getattr(requests, method
-                           )(url, data=data, headers=headers).json()
+        # Parse response
+        try:
+            for attribute, fields in config['sources'][source]['attributes'].items():
+                value = parsed_response
+                for field in fields:
+                    value = value[field]
+                sources[source][attribute] = value
+        except Exception as error:
+            print("Error parsing response", error)
+            if oldSources != None:
+                sources[source] = oldSources[source]
+            else:
+                for attribute, fields in config['sources'][source]['attributes'].items():
+                    sources[source][attribute] = "resp err"
+            continue
 
-        sources[source] = {}
-        for attribute, path in config['sources'][source]['attributes'].items():
-            value = response
-            for item in path:
-                value = value[item]
-            sources[source][attribute] = value
-
-    display_animation(config['animations']['loading_2'], 2)
     return sources
 
+# Decide whether to run with full brightness or not
+def checkNightMode():
+    if config['night_mode'] == [] or len(config['night_mode']) != 2:
+        return True
+    start_str = config['night_mode'][0].split(':')
+    end_str = config['night_mode'][1].split(':')
+    start_hour = int(start_str[0])
+    end_hour = int(end_str[0])
+    if start_hour < end_hour:
+        print('Night mode is inverted. Error')
+        return True
+    now = time.gmtime(time.time() + int(config['utc_offset']))
+    if now[3] > start_hour or now[3] < end_hour:
+        return True
+    if now[3] == start_hour and now[4] >= int(start_str[1]):
+        return True
+    if now[3] == end_hour and now[4] < int(end_str[1]):
+        return True
+    return False
 
+# Loop to run indefinetly during the normal operation
 def loop():
+    print('Starting main loop')
+    cycleCounter = 0
+    sources = load_sources()
     while True:
         gc.collect()
+        cycleCounter+=1
+        if cycleCounter % config['cycles_to_update'] == 0:
+            sources = load_sources(sources)
+        
+        #This shouldn't be necessary:
+        if config['cycles_to_reboot'] != 0 and cycleCounter % config['cycles_to_reboot'] == 0:
+            silentReboot()
+        PowDisplay.night = checkNightMode()
 
-        sources = load_sources()  # noqa: F841
-        for _ in range(config['cycles_to_update']):
-            for slide in config['slides']:
-                millis = slide['millis'] if 'millis' in slide else 1000
-                if slide['message'] == '{time}':
-                    message = f'  {get_time_text()} '
-                else:
-                    message = slide['message']
+        for slide in config['slides']:
+            print("Cycle", cycleCounter, slide)
 
-                    if '{' in message:
-                        source = slide['source']
-                        message = message.replace(
-                            '{', "sources['" + source + "']['"
-                        )
-                        message = message.replace('}', "']")
+            # Show the initial animation if exists
+            try:
+                PowDisplay.displayAnimation(
+                    config['animations'][slide['transitions'].get('in')['animation']],
+                    slide['transitions']['in'].get('cycles', 1)
+                )
+            except:
+                pass #No initial transition
+
+            # Decide how much time the message will be posted
+            millis = slide['millis'] if 'millis' in slide else 1000
+
+            # Show the time updating it each second
+            if slide['message'] == '{time}':
+                for _ in range(millis / 1000):
+                    now = time.gmtime(time.time() + int(config['utc_offset']))
+                    PowDisplay.displayString(f'{now[3]:02d}.{now[4]:02d}.{now[5]:02d}', 1000)
+            # Show date
+            elif slide['message'] == '{date}':
+                now = time.gmtime(time.time() + int(config['utc_offset']))
+                PowDisplay.displayString(f'{now[2]:02d}-{now[1]:02d}-{(now[0] % 100):02d}', millis)
+            # Show any other message
+            else:
+                message = slide['message']
+                # Process the message (variables are processed between {} )
+                if '{' in message:
+                    source = slide['source']
+                    message = message.replace(
+                        '{', "sources['" + source + "']['"
+                    )
+                    message = message.replace('}', "']")
+                    try:
                         message = eval(message, {'sources': sources})
+                    except:
+                        print("Eval error", message, sources)
+                        message = "eual err"
+                PowDisplay.displayString(str(message), millis)
 
-                # TODO conditional transition based on previous value
+            # Show the final animation if exists
+            try:
+                PowDisplay.displayAnimation(
+                    config['animations'][slide['transitions'].get('out')['animation']],
+                    slide['transitions'].get('out').get('cycles', 1)
+                )
+            except:
+                pass #No final transition
 
-                if 'transitions' not in slide:
-                    display(message, millis)
-                    continue
+# Enables AP mode to allow configuration
+def configBoot():
+    ap = network.WLAN(network.AP_IF) # create access-point interface
+    ap.active(True)
+    ap.config(essid=config['setup']['ssid'], \
+                password=config['setup']['password'], \
+                authmode=3) # authmode=3 means WPA2
+    PowDisplay.displayString("setup", 2000)
+    PowDisplay.displayString("192.168.4.1", 2000)
+    print('Connect to http://192.168.4.1')
+    registerSuccessfulInitialization()
+    import httpServer
+    httpServer.HTTPServer().listenAndServe()
 
-                in_transition = slide['transitions'].get('in')
-                if in_transition:
-                    display_animation(
-                        config['animations'][in_transition['animation']],
-                        in_transition.get('cycles', 1)
-                    )
+# Enable WiFi client mode, connect and start loop
+def normalBoot():
+    print('Trying to connect to', config['wificlient']['ssid']) #, 'with password', config['wificlient']['password'])
+    wclient = network.WLAN(network.STA_IF)
+    wclient.active(True)
+    wclient.connect(config['wificlient']['ssid'], config['wificlient']['password'])
 
-                display(message, millis)
-
-                out_transition = slide['transitions'].get('out')
-                if out_transition:
-                    display_animation(
-                        config['animations'][out_transition['animation']],
-                        out_transition.get('cycles', 1)
-                    )
-
-
-def start():
-    first_call = True
-    while True:
-        turn_lights_off()
-        Led.off()
-
-        # connect_wifi()
-        if first_call:
-            display(88888888, 500)
-            display(LOGO, 2000)
-            display_animation(config['animations']['loading_1'], 3)
-            if config['display_ip']:
-                display_ip()
-            set_time()
-
-        try:
-            loop()
-            first_call = False
-        except Exception as error:
-            print_traceback(error)
+    # Let it try to connect for 30 seconds
+    startTime = time.ticks_ms()
+    if not silentBoot:
+        PowDisplay.displayString("scanning", 1000)
+    while not wclient.isconnected() and time.ticks_diff(time.ticks_ms(), startTime) < 30000:
+        PowDisplay.displayAnimation(config['animations']['loading_1'], 3)
+    if wclient.isconnected():
+        netconf = wclient.ifconfig()
+        print(netconf)
+        if not silentBoot:
+            PowDisplay.displayString("paired", 1000)
+            PowDisplay.displayString(netconf[0], 1000)
+        registerSuccessfulInitialization()
+        updateTimezoneOffset()
+        loop()
+    wclient.disconnect()
+    wclient.active(False)
+    print('Can\'t connect to', config['wificlient']['ssid'])
 
 
-start()
+
+
+
+# Initialize
+print('Loading config')
+loadConfig()
+
+previousBootSuccessful = checkAndRemoveFile("successfulBoot")
+silentBoot = checkAndRemoveFile("silentBoot")
+
+if previousBootSuccessful and silentBoot:
+    print("Silent rebooting")
+else:
+    PowDisplay.displayLogo()
+
+if previousBootSuccessful and config['wificlient']['ssid'] != '':
+    normalBoot()
+
+print('Enabling AP to allow configuration')
+configBoot()
