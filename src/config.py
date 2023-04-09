@@ -22,7 +22,7 @@ config = {
     "cycles_to_reboot": 0,
     "sources": {
         "powclock_api": {
-            "url": "https://api.powclock.com/v1",
+            "url": "http://api.powclock.com/v1",
             "method": "get",
             "attributes": {
                 "price": ["price","usd"], #This will get data like .price.usd
