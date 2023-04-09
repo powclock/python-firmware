@@ -23,10 +23,15 @@ class HTTPServer:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', 80))
         s.listen(5)
+        s.settimeout(600) #Accept configurations during 10 minutes
         pendingConfig = True
         while pendingConfig:
             gc.collect()
-            conn, addr = s.accept()
+            try:
+                conn, addr = s.accept()
+            except Exception as error:
+                print('Error accepting connections:', error)
+                machine.reset()
             print('Got a connection from %s' % str(addr))
             conn.settimeout(10)
             request = b''

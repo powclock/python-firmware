@@ -76,6 +76,8 @@ cat << EOF | curl -X POST --data @- http://192.168.4.1/config.json
 EOF
 ```
 
+If you don't interact with the PowClock during 10 minutes, it will reboot.
+
 ## Aditional configurations
 
 You can refer to config.py to see which additional configurations can be changed. No config validation is performed, so take care while modifying them. These additional configs can be useful:
