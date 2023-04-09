@@ -26,7 +26,7 @@ _symbols = { #To do: implement Siekoo alphabet
     '2': [1, 1, 0, 1, 1, 0, 1, 0], # Also valid for z
     '3': [1, 1, 1, 1, 0, 0, 1, 0],
     '4': [0, 1, 1, 0, 0, 1, 1, 0],
-    '5': [1, 0, 1, 1, 0, 1, 1, 0],
+    '5': [1, 0, 1, 1, 0, 1, 1, 0], # Also valid for s
     '6': [1, 0, 1, 1, 1, 1, 1, 0],
     '7': [1, 1, 1, 0, 0, 0, 0, 0],
     '8': [1, 1, 1, 1, 1, 1, 1, 0],
@@ -35,6 +35,7 @@ _symbols = { #To do: implement Siekoo alphabet
     "-": [0, 0, 0, 0, 0, 0, 1, 0],
     '_': [0, 0, 0, 1, 0, 0, 0, 0],
     ' ': [0, 0, 0, 0, 0, 0, 0, 0],
+    '?': [1, 1, 0, 0, 1, 0, 1, 0],
     'a': [1, 1, 1, 1, 1, 0, 1, 0],
     'b': [0, 0, 1, 1, 1, 1, 1, 0],
     'c': [0, 0, 0, 1, 1, 0, 1, 0],
@@ -155,16 +156,37 @@ class PowDisplay:
                 time.sleep_us(100) # REFRESH_DELAY = 100
         PowDisplay.off()
 
-    # displayString should receive only characters in the symbols array
+    # displayString will print only characters in the symbols array
     def displayString(message, millis=1000):
-        messageChars = [char for char in message]
-        bitLines = [ _symbols[messageChars[0]].copy() ]
+        messageChars = [char for char in message.lower()]
+        current = messageChars[0]
+        if current not in _symbols:
+            bitLines = [ _symbols['?'] ]
+        if current == 'm':
+            bitLines = [ _symbols['n'], _symbols['m'] ]
+        elif current == 'w':
+            bitLines = [ _symbols['u'], _symbols['w'] ]
+        else:
+            bitLines = [ _symbols[current] ]
+
         for i in range(len(messageChars)-1):
-            if messageChars[i+1] == '.' and messageChars[i] != '.':
-                # Add a dot to the previous character
-                bitLines[len(bitLines) - 1][7] = 1
+            current = messageChars[i+1]
+            if current == '.' and messageChars[i] != '.':
+                # Add a dot to the previous character after making a copy
+                last = len(bitLines) - 1
+                bitLines[last] = bitLines[last].copy()
+                bitLines[last][7] = 1
+                del last
+            elif current not in _symbols:
+                bitLines.append( _symbols['?'] )
             else:
-                bitLines.append( _symbols[messageChars[i+1]].copy() )
+                if current == 'm':
+                    bitLines.append( _symbols['n'] )
+                elif current == 'w':
+                    bitLines.append( _symbols['u'] )
+                bitLines.append( _symbols[current] )
+        del current
+        del messageChars
                 
         messageLen = len(bitLines)
         # If length is less than the screen size, add space to center the message
