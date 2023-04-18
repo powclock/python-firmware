@@ -92,7 +92,8 @@ class PowDisplay:
     data = Pin(13, Pin.OUT)
     clock = Pin(12, Pin.OUT)
     latch = Pin(14, Pin.OUT)
-    night = True
+    night = False
+    refreshDelay = 1200
 
     # off turns off the entire display
     @micropython.native
@@ -153,7 +154,7 @@ class PowDisplay:
                         data.on()
                         clock.on()
                     latch.on()
-                time.sleep_us(100) # REFRESH_DELAY = 100
+                time.sleep_us(PowDisplay.refreshDelay)
         PowDisplay.off()
 
     # displayString will print only characters in the symbols array
