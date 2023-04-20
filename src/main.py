@@ -1,12 +1,23 @@
 import gc
 from config import loadConfig, config
-from display import PowDisplay
+import display
 import powRequests
 import json
 import network
 import time
 import ntptime
 import machine
+
+def testDisplay():
+    for i in range(20):
+        display.nightRefreshDelay = (i+1)*100
+        print("night", display.nightRefreshDelay)
+        display.night = True
+        display.displayString("888-"+f'{display.nightRefreshDelay:04d}',6000)
+        display.dayRefreshDelay = (i+1)*100
+        print("day", display.dayRefreshDelay)
+        display.night = False
+        display.displayString("888-"+f'{display.dayRefreshDelay:04d}',6000)
 
 # Creates a file to prepare a silent reboot (less verbose at start time)
 def silentReboot():
@@ -55,7 +66,7 @@ def updateTimezoneOffset():
 # Download information from webservers in JSON format
 def load_sources(oldSources=None):
     print('Loading sources')
-    PowDisplay.displayAnimation(config['animations']['loading_2'], 2)
+    display.displayAnimation(config['animations']['loading_2'], 2)
 
     if not network.WLAN(network.STA_IF).isconnected():
         sources = {}
@@ -156,14 +167,14 @@ def loop():
         #This shouldn't be necessary:
         if config['cycles_to_reboot'] != 0 and cycleCounter % config['cycles_to_reboot'] == 0:
             silentReboot()
-        PowDisplay.night = checkNightMode()
+        display.night = checkNightMode()
 
         for slide in config['slides']:
             print("Cycle", cycleCounter, slide)
 
             # Show the initial animation if exists
             try:
-                PowDisplay.displayAnimation(
+                display.displayAnimation(
                     config['animations'][slide['transitions'].get('in')['animation']],
                     slide['transitions']['in'].get('cycles', 1)
                 )
@@ -177,11 +188,11 @@ def loop():
             if slide['message'] == '{time}':
                 for _ in range(millis / 1000):
                     now = time.gmtime(time.time() + int(config['utc_offset']))
-                    PowDisplay.displayString(f'{now[3]:02d}.{now[4]:02d}.{now[5]:02d}', 1000)
+                    display.displayString(f'{now[3]:02d}.{now[4]:02d}.{now[5]:02d}', 1000)
             # Show date
             elif slide['message'] == '{date}':
                 now = time.gmtime(time.time() + int(config['utc_offset']))
-                PowDisplay.displayString(f'{now[2]:02d}-{now[1]:02d}-{(now[0] % 100):02d}', millis)
+                display.displayString(f'{now[2]:02d}-{now[1]:02d}-{(now[0] % 100):02d}', millis)
             # Show any other message
             else:
                 message = slide['message']
@@ -197,11 +208,11 @@ def loop():
                     except:
                         print("Eval error", message, sources)
                         message = "eual err"
-                PowDisplay.displayString(str(message), millis)
+                display.displayString(str(message), millis)
 
             # Show the final animation if exists
             try:
-                PowDisplay.displayAnimation(
+                display.displayAnimation(
                     config['animations'][slide['transitions'].get('out')['animation']],
                     slide['transitions'].get('out').get('cycles', 1)
                 )
@@ -215,8 +226,8 @@ def configBoot():
     ap.config(essid=config['setup']['ssid'], \
                 password=config['setup']['password'], \
                 authmode=3) # authmode=3 means WPA2
-    PowDisplay.displayString("setup", 2000)
-    PowDisplay.displayString("192.168.4.1", 2000)
+    display.displayString("setup", 2000)
+    display.displayString("192.168.4.1", 2000)
     print('Connect to http://192.168.4.1')
     registerSuccessfulInitialization()
     import httpServer
@@ -232,15 +243,15 @@ def normalBoot():
     # Let it try to connect for 30 seconds
     startTime = time.ticks_ms()
     if not silentBoot:
-        PowDisplay.displayString("scanning", 1000)
+        display.displayString("scanning", 1000)
     while not wclient.isconnected() and time.ticks_diff(time.ticks_ms(), startTime) < 30000:
-        PowDisplay.displayAnimation(config['animations']['loading_1'], 3)
+        display.displayAnimation(config['animations']['loading_1'], 3)
     if wclient.isconnected():
         netconf = wclient.ifconfig()
         print(netconf)
         if not silentBoot:
-            PowDisplay.displayString("paired", 1000)
-            PowDisplay.displayString(netconf[0], 1000)
+            display.displayString("paired", 1000)
+            display.displayString(netconf[0], 1000)
         registerSuccessfulInitialization()
         updateTimezoneOffset()
         loop()
@@ -262,7 +273,7 @@ silentBoot = checkAndRemoveFile("silentBoot")
 if previousBootSuccessful and silentBoot:
     print("Silent rebooting")
 else:
-    PowDisplay.displayLogo()
+    display.displayLogo()
 
 if previousBootSuccessful and config['wificlient']['ssid'] != '':
     normalBoot()

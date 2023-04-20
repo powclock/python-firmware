@@ -2,7 +2,7 @@ import esp
 import machine
 import network
 import gc
-from display import PowDisplay
+import display
 
 # Enable debugging
 esp.osdebug(0)
@@ -19,7 +19,7 @@ network.WLAN(network.STA_IF).active(False)
 network.WLAN(network.AP_IF).active(False)
 
 # Shutdown lights
-PowDisplay.off()
-PowDisplay.noled.on()
+display.displayOff()
+display.noled.on()
 
 print('\n\n\nBooting PowClock')

@@ -1,5 +1,4 @@
 import usocket
-from display import PowDisplay
 
 # Source file imported from https://raw.githubusercontent.com/micropython/micropython-lib/master/python-ecosys/urequests/urequests.py
 # The file included in firmware doesn't allow timeouts
