@@ -14,10 +14,6 @@ machine.freq(int(16e7))
 gc.enable()
 gc.collect()
 
-# Disable WiFi
-network.WLAN(network.STA_IF).active(False)
-network.WLAN(network.AP_IF).active(False)
-
 # Shutdown lights
 display.displayOff()
 display.noled.on()
