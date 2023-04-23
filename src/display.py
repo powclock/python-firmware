@@ -25,17 +25,6 @@ from machine import Pin
 
 # The display must be refreshed after "refreshDelay" to maintain characters displayed.
 
-_logo = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [1, 1, 0, 0, 1, 1, 1, 0],
-    [1, 1, 0, 0, 0, 1, 1, 0],
-    [0, 1, 0, 0, 0, 1, 1, 0],
-    [0, 1, 0, 0, 0, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]
-
 _symbols = { #To do: implement Siekoo alphabet
     '0': [1, 1, 1, 1, 1, 1, 0, 0],
     '1': [0, 1, 1, 0, 0, 0, 0, 0],
@@ -215,5 +204,16 @@ def displayAnimation(animation, cycles=1):
     for _ in range(cycles):
         for value in animation['messages']:
             displayString(value, millis)
+
 def displayLogo(millis=1000):
+    _logo = [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 0, 0, 1, 1, 1, 0],
+        [1, 1, 0, 0, 0, 1, 1, 0],
+        [0, 1, 0, 0, 0, 1, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ]
     displayBitLines(_logo, millis)

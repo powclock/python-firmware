@@ -1,7 +1,24 @@
-import socket
-import machine
-import time
-import gc
+# Enables AP mode to allow configuration
+def configBoot(config):
+    import network
+    import display
+    ap = network.WLAN(network.AP_IF) # create access-point interface    
+    ap.active(True)
+    ap.config(essid=config['setup']['ssid'], \
+                password=config['setup']['password'], \
+                authmode=3) # authmode=3 means WPA2
+    display.displayString("setup", 2000)
+    display.displayString("192.168.4.1", 2000)
+
+    from utils import registerFile
+    registerFile("successfulBoot")
+    registerFile("apMode")
+    del registerFile
+    del network
+    del display
+
+    print('Connect to http://192.168.4.1')
+    HTTPServer().listenAndServe()
 
 class HTTPServer:
     def __init__(self):
@@ -20,6 +37,8 @@ class HTTPServer:
             self._getResponse = self._getResponse.replace('{{ INPUT }}', '')
         
     def listenAndServe(self):
+        import socket
+        import gc
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', 80))
         s.listen(5)
@@ -27,11 +46,12 @@ class HTTPServer:
         pendingConfig = True
         while pendingConfig:
             gc.collect()
+            print("Available memory:", gc.mem_free())
             try:
                 conn, addr = s.accept()
             except Exception as error:
                 print('Error accepting connections:', error)
-                machine.reset()
+                break
             print('Got a connection from %s' % str(addr))
             conn.settimeout(10)
             request = b''
@@ -84,7 +104,17 @@ class HTTPServer:
             conn.write(response)
             conn.close()
         
+        del socket
+        
         # Wait 2 seconds to sync filesystem
+        from network import WLAN, AP_IF
+        from utils import checkAndRemoveFile
+        import time
+        import machine
+
+        print("Rebooting...")
+        WLAN(AP_IF).active(False)
+        checkAndRemoveFile("apMode")
         time.sleep(2)
         machine.reset()
         
