@@ -6,13 +6,13 @@ def configBoot(config):
     ap.active(True)
     ap.config(essid=config['setup']['ssid'], \
                 password=config['setup']['password'], \
+                hidden=False,
                 authmode=3) # authmode=3 means WPA2
     display.displayString("setup", 2000)
     display.displayString("192.168.4.1", 2000)
 
     from utils import registerFile
     registerFile("successfulBoot")
-    registerFile("apMode")
     del registerFile
     del network
     del display

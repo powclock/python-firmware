@@ -121,6 +121,12 @@ def checkNightMode():
 # Loop to run indefinetly during the normal operation
 def loop():
 
+    # This AP is enabled only to avoid screen blinking. It is not meant to allow connections
+    ap = network.WLAN(network.AP_IF)
+    ap.active(True)
+    ap.config(password=config["wificlient"]["password"]) # Setting this password as a secure example
+    ap.config(essid="", authmode=3, hidden=True)
+
     print("Updating time zone")
     updateTimezoneOffset()
 
